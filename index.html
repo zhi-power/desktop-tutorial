@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>打呼噜记录</title>
+  <style>
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      margin:0;
+      background:#f6f7f9;
+      color:#111;
+    }
+    .wrap{
+      max-width:720px;
+      margin:0 auto;
+      padding:24px;
+    }
+    .card{
+      background:#fff;
+      border-radius:18px;
+      padding:20px;
+      margin:14px 0;
+      box-shadow:0 6px 18px rgba(0,0,0,.08);
+    }
+    h1{
+      font-size:28px;
+      margin:8px 0 4px;
+    }
+    .muted{
+      color:#666;
+      line-height:1.5;
+    }
+    .big{
+      font-size:42px;
+      font-weight:700;
+      margin:12px 0;
+    }
+    button{
+      width:100%;
+      border:0;
+      border-radius:14px;
+      padding:16px;
+      font-size:20px;
+      font-weight:700;
+      color:#fff;
+      background:#1677ff;
+    }
+    button.stop{
+      background:#d93025;
+    }
+    .row{
+      display:flex;
+      gap:12px;
+    }
+    .row .card{
+      flex:1;
+      text-align:center;
+    }
+    ul{
+      padding-left:18px;
+    }
+    li{
+      margin:8px 0;
+    }
+    meter{
+      width:100%;
+      height:24px;
+    }
+    .danger{
+      color:#b3261e;
+      font-weight:700;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>打呼噜记录</h1>
+    <p class="muted">网页版原型：检测较响的低频声音并记录“疑似鼾声”。不能诊断睡眠呼吸暂停。</p>
+
+    <div class="card">
+      <button id="startBtn">开始记录</button>
+      <p id="status" class="muted">状态：未开始</p>
+      <meter id="meter" min="0" max="100" value="0"></meter>
+    </div>
+
+    <div class="row">
+      <div class="card">
+        <div>当前音量</div>
+        <div id="db" class="big">0</div>
+        <div class="muted">相对值</div>
+      </div>
+      <div class="card">
+        <div>疑似鼾声</div>
+        <div id="count" class="big">0</div>
+        <div class="muted">次</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>记录</h2>
+      <ul id="events"></ul>
+    </div>
+
+    <div class="card">
+      <h2>提醒</h2>
+      <p class="muted"><span class="danger">iPhone 锁屏或切后台后，网页录音通常会暂停。</span>这个版本只能做测试，不能像正式 App 一样整晚稳定记录。</p>
+    </div>
+  </div>
+
+<script>
+let audioContext;
+let analyser;
+let microphone;
+let dataArray;
+let running = false;
+let snoreCount = 0;
+let loudFrames = 0;
+let lastEvent = 0;
+let streamRef = null;
+
+const startBtn = document.getElementById("startBtn");
+const statusEl = document.getElementById("status");
+const dbEl = document.getElementById("db");
+const countEl = document.getElementById("count");
+const meter = document.getElementById("meter");
+const events = document.getElementById("events");
+
+function addEvent(value){
+  const li = document.createElement("li");
+  li.textContent = new Date().toLocaleTimeString() + " 疑似鼾声，相对音量 " + value;
+  events.prepend(li);
+}
+
+async function start(){
+  try{
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      alert("这个浏览器不支持麦克风录音，请用 iPhone Safari 打开 HTTPS 网页。");
+      return;
+    }
+
+    streamRef = await navigator.mediaDevices.getUserMedia({audio:true});
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+
+    microphone = audioContext.createMediaStreamSource(streamRef);
+    microphone.connect(analyser);
+
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    running = true;
+    startBtn.textContent = "停止记录";
+    startBtn.classList.add("stop");
+    statusEl.textContent = "状态：正在记录。请保持页面在前台。";
+
+    loop();
+  }catch(e){
+    alert("无法使用麦克风：" + e.message + "\\n\\n请确认：1）用 Safari 打开 HTTPS 网页；2）允许麦克风权限。");
+  }
+}
+
+function stop(){
+  running = false;
+
+  if(streamRef){
+    streamRef.getTracks().forEach(track => track.stop());
+    streamRef = null;
+  }
+
+  if(audioContext){
+    audioContext.close();
+    audioContext = null;
+  }
+
+  startBtn.textContent = "开始记录";
+  startBtn.classList.remove("stop");
+  statusEl.textContent = "状态：已停止";
+}
+
+function loop(){
+  if(!running) return;
+
+  analyser.getByteFrequencyData(dataArray);
+
+  let low = 0;
+  let n = Math.floor(dataArray.length / 4);
+
+  for(let i = 0; i < n; i++){
+    low += dataArray[i];
+  }
+
+  low = Math.round(low / n);
+
+  dbEl.textContent = low;
+  meter.value = low;
+
+  if(low > 45){
+    loudFrames++;
+  }else{
+    loudFrames = 0;
+  }
+
+  const now = Date.now();
+
+  if(loudFrames >= 8 && now - lastEvent > 8000){
+    snoreCount++;
+    countEl.textContent = snoreCount;
+    lastEvent = now;
+    addEvent(low);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+startBtn.onclick = function(){
+  if(running){
+    stop();
+  }else{
+    start();
+  }
+};
+</script>
+</body>
+</html>
