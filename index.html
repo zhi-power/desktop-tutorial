@@ -2,108 +2,135 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>打呼噜记录与回放</title>
+
   <style>
-    body{
-      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-      margin:0;
-      background:#f6f7f9;
-      color:#111;
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      background: #f6f7f9;
+      color: #111;
     }
-    .wrap{
-      max-width:720px;
-      margin:0 auto;
-      padding:24px;
+
+    .wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 24px;
     }
-    .card{
-      background:#fff;
-      border-radius:18px;
-      padding:20px;
-      margin:14px 0;
-      box-shadow:0 6px 18px rgba(0,0,0,.08);
+
+    .card {
+      background: #fff;
+      border-radius: 18px;
+      padding: 20px;
+      margin: 14px 0;
+      box-shadow: 0 6px 18px rgba(0,0,0,.08);
     }
-    h1{
-      font-size:28px;
-      margin:8px 0 4px;
+
+    h1 {
+      font-size: 28px;
+      margin: 8px 0 4px;
     }
-    .muted{
-      color:#666;
-      line-height:1.5;
+
+    h2 {
+      margin-top: 0;
     }
-    .big{
-      font-size:42px;
-      font-weight:700;
-      margin:12px 0;
+
+    .muted {
+      color: #666;
+      line-height: 1.5;
     }
-    button{
-      width:100%;
-      border:0;
-      border-radius:14px;
-      padding:16px;
-      font-size:20px;
-      font-weight:700;
-      color:#fff;
-      background:#1677ff;
-      margin-top:8px;
+
+    .big {
+      font-size: 42px;
+      font-weight: 700;
+      margin: 12px 0;
     }
-    button.stop{
-      background:#d93025;
+
+    button {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 20px;
+      font-weight: 700;
+      color: #fff;
+      background: #1677ff;
+      margin-top: 8px;
     }
-    .small-btn{
-      width:auto;
-      padding:8px 12px;
-      font-size:15px;
-      border-radius:10px;
-      margin-right:8px;
-      margin-top:8px;
-      background:#1677ff;
+
+    button.stop {
+      background: #d93025;
     }
-    .download{
-      background:#555;
+
+    .row {
+      display: flex;
+      gap: 12px;
     }
-    .row{
-      display:flex;
-      gap:12px;
+
+    .row .card {
+      flex: 1;
+      text-align: center;
     }
-    .row .card{
-      flex:1;
-      text-align:center;
+
+    ul {
+      list-style: none;
+      padding-left: 0;
     }
-    ul{
-      list-style:none;
-      padding-left:0;
+
+    li {
+      margin: 12px 0;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      background: #fafafa;
     }
-    li{
-      margin:12px 0;
-      padding:12px;
-      border:1px solid #e0e0e0;
-      border-radius:12px;
-      background:#fafafa;
+
+    meter {
+      width: 100%;
+      height: 24px;
     }
-    meter{
-      width:100%;
-      height:24px;
+
+    audio {
+      width: 100%;
+      margin-top: 10px;
     }
-    .danger{
-      color:#b3261e;
-      font-weight:700;
+
+    a.download {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 10px;
+      background: #1677ff;
+      color: white;
+      text-decoration: none;
+      font-weight: 600;
     }
-    audio{
-      width:100%;
-      margin-top:8px;
+
+    .danger {
+      color: #b3261e;
+      font-weight: 700;
+    }
+
+    .small {
+      font-size: 14px;
     }
   </style>
 </head>
+
 <body>
   <div class="wrap">
     <h1>打呼噜记录与回放</h1>
-    <p class="muted">检测较响的低频声音，自动保存疑似鼾声片段，可回放。不能诊断睡眠呼吸暂停。</p>
+    <p class="muted">
+      网页版原型：检测较响的低频声音，自动保存疑似鼾声片段，可回放和下载。
+      本工具不能诊断睡眠呼吸暂停。
+    </p>
 
     <div class="card">
       <button id="startBtn">开始记录</button>
       <p id="status" class="muted">状态：未开始</p>
       <meter id="meter" min="0" max="100" value="0"></meter>
+      <p id="formatInfo" class="muted small">录音格式：未检测</p>
     </div>
 
     <div class="row">
@@ -112,6 +139,7 @@
         <div id="db" class="big">0</div>
         <div class="muted">相对值</div>
       </div>
+
       <div class="card">
         <div>鼾声片段</div>
         <div id="count" class="big">0</div>
@@ -121,32 +149,38 @@
 
     <div class="card">
       <h2>录音片段</h2>
-      <p class="muted">检测到疑似鼾声后，会自动保存约 8 秒录音。</p>
+      <p class="muted">
+        检测到疑似鼾声后，会自动保存约 8 秒录音。可以直接播放，也可以下载到手机。
+      </p>
       <ul id="events"></ul>
     </div>
 
     <div class="card">
       <h2>提醒</h2>
       <p class="muted">
-        <span class="danger">iPhone 锁屏或切后台后，网页录音通常会暂停。</span>
-        睡觉测试时请保持 Safari 页面在前台，并把自动锁定设为“永不”。
+        <span class="danger">手机锁屏或切后台后，网页录音通常会暂停。</span>
+        睡觉测试时请保持浏览器页面在前台，并把自动锁定设为“永不”。
+      </p>
+      <p class="muted small">
+        Edge 浏览器也是用 iPhone 的 WebKit 内核，所以在 iPhone 上的限制和 Safari 基本一样。
       </p>
     </div>
   </div>
 
 <script>
-let audioContext;
-let analyser;
-let microphone;
-let dataArray;
+let audioContext = null;
+let analyser = null;
+let microphone = null;
+let dataArray = null;
 let running = false;
+
+let streamRef = null;
+let mediaRecorder = null;
+let recordingSnippet = false;
+
 let snoreCount = 0;
 let loudFrames = 0;
 let lastEvent = 0;
-let streamRef = null;
-
-let mediaRecorder = null;
-let recordingSnippet = false;
 
 const startBtn = document.getElementById("startBtn");
 const statusEl = document.getElementById("status");
@@ -154,18 +188,75 @@ const dbEl = document.getElementById("db");
 const countEl = document.getElementById("count");
 const meter = document.getElementById("meter");
 const events = document.getElementById("events");
+const formatInfo = document.getElementById("formatInfo");
 
-function addAudioEvent(blob, value){
+function getSupportedRecordingFormat() {
+  if (!window.MediaRecorder) {
+    return {
+      mimeType: "",
+      ext: "webm",
+      label: "当前浏览器不支持 MediaRecorder"
+    };
+  }
+
+  const candidates = [
+    { mimeType: "audio/mp4", ext: "mp4", label: "MP4" },
+    { mimeType: "audio/mp4;codecs=mp4a.40.2", ext: "mp4", label: "MP4 AAC" },
+    { mimeType: "audio/webm;codecs=opus", ext: "webm", label: "WebM Opus" },
+    { mimeType: "audio/webm", ext: "webm", label: "WebM" }
+  ];
+
+  for (const item of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(item.mimeType)) {
+        return item;
+      }
+    } catch (e) {}
+  }
+
+  return {
+    mimeType: "",
+    ext: "webm",
+    label: "浏览器默认格式"
+  };
+}
+
+function pad(num) {
+  return String(num).padStart(2, "0");
+}
+
+function makeFileName(ext) {
+  const d = new Date();
+
+  const name =
+    "snore-" +
+    d.getFullYear() +
+    pad(d.getMonth() + 1) +
+    pad(d.getDate()) +
+    "-" +
+    pad(d.getHours()) +
+    pad(d.getMinutes()) +
+    pad(d.getSeconds()) +
+    "." +
+    ext;
+
+  return name;
+}
+
+function addAudioEvent(blob, value, ext, label) {
   snoreCount++;
   countEl.textContent = snoreCount;
 
   const url = URL.createObjectURL(blob);
   const timeText = new Date().toLocaleTimeString();
+  const fileName = makeFileName(ext || "webm");
 
   const li = document.createElement("li");
 
   const title = document.createElement("div");
-  title.innerHTML = "<strong>" + timeText + "</strong> 疑似鼾声，相对音量 " + value;
+  title.innerHTML =
+    "<strong>" + timeText + "</strong> 疑似鼾声，相对音量 " + value +
+    "<br><span class='muted small'>格式：" + label + "，文件名：" + fileName + "</span>";
 
   const audio = document.createElement("audio");
   audio.controls = true;
@@ -173,70 +264,107 @@ function addAudioEvent(blob, value){
 
   const download = document.createElement("a");
   download.href = url;
-  download.download = "snore-" + Date.now() + ".webm";
-  download.textContent = "下载这段录音";
-  download.style.display = "inline-block";
-  download.style.marginTop = "8px";
+  download.download = fileName;
+  download.textContent = "保存到手机";
+  download.className = "download";
+
+  const tip = document.createElement("p");
+  tip.className = "muted small";
+  tip.textContent = "如果点按钮没有反应，可以长按“保存到手机”，选择下载链接文件或存储到文件。";
 
   li.appendChild(title);
   li.appendChild(audio);
   li.appendChild(download);
+  li.appendChild(tip);
 
   events.prepend(li);
 }
 
-function recordSnippet(value){
-  if(recordingSnippet || !streamRef) return;
+function recordSnippet(value) {
+  if (recordingSnippet || !streamRef) return;
+
+  if (!window.MediaRecorder) {
+    statusEl.textContent = "状态：当前浏览器不支持保存录音，只能检测音量。";
+    return;
+  }
 
   recordingSnippet = true;
 
+  const format = getSupportedRecordingFormat();
   let chunks = [];
 
-  try{
-    mediaRecorder = new MediaRecorder(streamRef);
+  try {
+    if (format.mimeType) {
+      mediaRecorder = new MediaRecorder(streamRef, { mimeType: format.mimeType });
+    } else {
+      mediaRecorder = new MediaRecorder(streamRef);
+    }
 
-    mediaRecorder.ondataavailable = function(e){
-      if(e.data && e.data.size > 0){
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data && e.data.size > 0) {
         chunks.push(e.data);
       }
     };
 
-    mediaRecorder.onstop = function(){
-      const blob = new Blob(chunks, { type: "audio/webm" });
-      addAudioEvent(blob, value);
+    mediaRecorder.onstop = function() {
+      const blobType = format.mimeType || "audio/webm";
+      const blob = new Blob(chunks, { type: blobType });
+
+      addAudioEvent(blob, value, format.ext, format.label);
+
       recordingSnippet = false;
       chunks = [];
+
+      if (running) {
+        statusEl.textContent = "状态：正在记录。请保持页面在前台。";
+      }
     };
 
     mediaRecorder.start();
 
-    statusEl.textContent = "状态：检测到疑似鼾声，正在保存录音片段。";
+    statusEl.textContent = "状态：检测到疑似鼾声，正在保存约 8 秒录音片段。";
 
-    setTimeout(function(){
-      if(mediaRecorder && mediaRecorder.state === "recording"){
+    setTimeout(function() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
         mediaRecorder.stop();
-      }
-      if(running){
-        statusEl.textContent = "状态：正在记录。请保持页面在前台。";
       }
     }, 8000);
 
-  }catch(e){
+  } catch (e) {
     console.log("录音片段失败", e);
+    statusEl.textContent = "状态：录音片段保存失败：" + e.message;
     recordingSnippet = false;
   }
 }
 
-async function start(){
-  try{
-    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-      alert("这个浏览器不支持麦克风录音，请用 iPhone Safari 打开 HTTPS 网页。");
+async function start() {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      alert("这个浏览器不支持麦克风录音。请用 Edge 或 Safari 打开 HTTPS 网页。");
       return;
     }
 
-    streamRef = await navigator.mediaDevices.getUserMedia({audio:true});
+    if (!window.MediaRecorder) {
+      alert("当前浏览器不支持保存录音片段，只能检测音量。建议更新 iOS 或换 Safari / Edge 再试。");
+    }
+
+    const format = getSupportedRecordingFormat();
+    formatInfo.textContent = "录音格式：优先使用 " + format.label + "，下载后缀 ." + format.ext;
+
+    streamRef = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      }
+    });
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
     analyser = audioContext.createAnalyser();
     analyser.fftSize = 2048;
 
@@ -252,24 +380,32 @@ async function start(){
 
     loop();
 
-  }catch(e){
-    alert("无法使用麦克风：" + e.message + "\\n\\n请确认：1）用 Safari 打开 HTTPS 网页；2）允许麦克风权限。");
+  } catch (e) {
+    alert(
+      "无法使用麦克风：" + e.message +
+      "\\n\\n请确认：" +
+      "\\n1. 用 HTTPS 网页打开" +
+      "\\n2. 已允许麦克风权限" +
+      "\\n3. 浏览器页面保持前台"
+    );
   }
 }
 
-function stop(){
+function stop() {
   running = false;
 
-  if(mediaRecorder && mediaRecorder.state === "recording"){
+  if (mediaRecorder && mediaRecorder.state === "recording") {
     mediaRecorder.stop();
   }
 
-  if(streamRef){
-    streamRef.getTracks().forEach(track => track.stop());
+  if (streamRef) {
+    streamRef.getTracks().forEach(function(track) {
+      track.stop();
+    });
     streamRef = null;
   }
 
-  if(audioContext){
+  if (audioContext) {
     audioContext.close();
     audioContext = null;
   }
@@ -279,15 +415,15 @@ function stop(){
   statusEl.textContent = "状态：已停止";
 }
 
-function loop(){
-  if(!running) return;
+function loop() {
+  if (!running || !analyser || !dataArray) return;
 
   analyser.getByteFrequencyData(dataArray);
 
   let low = 0;
-  let n = Math.floor(dataArray.length / 4);
+  const n = Math.floor(dataArray.length / 4);
 
-  for(let i = 0; i < n; i++){
+  for (let i = 0; i < n; i++) {
     low += dataArray[i];
   }
 
@@ -296,15 +432,15 @@ function loop(){
   dbEl.textContent = low;
   meter.value = low;
 
-  if(low > 45){
+  if (low > 45) {
     loudFrames++;
-  }else{
+  } else {
     loudFrames = 0;
   }
 
   const now = Date.now();
 
-  if(loudFrames >= 8 && now - lastEvent > 12000){
+  if (loudFrames >= 8 && now - lastEvent > 12000) {
     lastEvent = now;
     recordSnippet(low);
   }
@@ -312,10 +448,10 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-startBtn.onclick = function(){
-  if(running){
+startBtn.onclick = function() {
+  if (running) {
     stop();
-  }else{
+  } else {
     start();
   }
 };
