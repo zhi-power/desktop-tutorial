@@ -1,460 +1,480 @@
+:鼾声守护专业睡眠分析版:index.html
 <!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>打呼噜记录与回放</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+  <title>鼾声守护 - 智能睡眠监测与分析</title>
 
   <style>
+    :root {
+      --bg-color: #0b0f19;
+      --card-bg: #151f32;
+      --card-bg-hover: #1e2d4a;
+      --border-color: #243553;
+      --text-main: #f1f5f9;
+      --text-muted: #64748b;
+      --text-desc: #94a3b8;
+      --primary: #4f46e5;
+      --primary-glow: rgba(79, 70, 229, 0.4);
+      --accent: #06b6d4;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Icons", "Helvetica Neue", Helvetica, Arial, sans-serif;
       margin: 0;
-      background: #f6f7f9;
-      color: #111;
+      background: var(--bg-color);
+      color: var(--text-main);
+      padding-bottom: 50px;
+      line-height: 1.4;
     }
 
     .wrap {
-      max-width: 720px;
+      max-width: 640px;
       margin: 0 auto;
-      padding: 24px;
+      padding: 16px;
+    }
+
+    header {
+      text-align: center;
+      margin: 24px 0 20px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin: 0 0 6px 0;
+      background: linear-gradient(135deg, #a5b4fc 0%, #818cf8 50%, #6366f1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      display: inline-block;
+      letter-spacing: -0.5px;
+    }
+
+    header p {
+      margin: 0;
+      font-size: 14px;
+      color: var(--text-desc);
     }
 
     .card {
-      background: #fff;
-      border-radius: 18px;
+      background: var(--card-bg);
+      border-radius: 20px;
       padding: 20px;
-      margin: 14px 0;
-      box-shadow: 0 6px 18px rgba(0,0,0,.08);
+      margin: 16px 0;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+      position: relative;
+      overflow: hidden;
     }
 
-    h1 {
-      font-size: 28px;
-      margin: 8px 0 4px;
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-
-    .muted {
-      color: #666;
-      line-height: 1.5;
-    }
-
-    .big {
-      font-size: 42px;
+    .card h2 {
+      font-size: 16px;
       font-weight: 700;
-      margin: 12px 0;
+      margin-top: 0;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #f8fafc;
     }
 
-    button {
+    .visualizer-container {
+      position: relative;
       width: 100%;
+      height: 110px;
+      background: #070b13;
+      border-radius: 14px;
+      overflow: hidden;
+      margin-bottom: 16px;
+      border: 1px solid #1a263c;
+    }
+
+    canvas#canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 按钮组 */
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .btn-main {
+      flex: 2;
       border: 0;
       border-radius: 14px;
       padding: 16px;
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       color: #fff;
-      background: #1677ff;
-      margin-top: 8px;
-    }
-
-    button.stop {
-      background: #d93025;
-    }
-
-    .row {
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px var(--primary-glow);
+    }
+
+    .btn-main:active {
+      transform: scale(0.97);
+    }
+
+    .btn-main.stop {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
+    }
+
+    .btn-secondary {
+      flex: 1;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+      background: rgba(36, 53, 83, 0.3);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .btn-secondary:active {
+      background: rgba(36, 53, 83, 0.6);
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+      font-size: 12px;
+    }
+
+    .status-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .status-dot.active {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      animation: pulse-dot 1.5s infinite;
+    }
+
+    .status-dot.calibrating {
+      background: var(--warning);
+      box-shadow: 0 0 8px var(--warning);
+      animation: pulse-dot 1s infinite;
+    }
+
+    @keyframes pulse-dot {
+      0% { opacity: 0.4; }
+      50% { opacity: 1; }
+      100% { opacity: 0.4; }
+    }
+
+    /* 实时仪表盘 */
+    .grid-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
       gap: 12px;
     }
 
-    .row .card {
-      flex: 1;
+    .grid-stats .card {
+      margin: 0;
       text-align: center;
+      padding: 16px 12px;
     }
 
-    ul {
-      list-style: none;
-      padding-left: 0;
+    .stat-val {
+      font-size: 34px;
+      font-weight: 800;
+      margin: 4px 0;
+      color: #ffffff;
+      font-family: "SF Pro Display", -apple-system, sans-serif;
     }
 
-    li {
-      margin: 12px 0;
-      padding: 12px;
-      border: 1px solid #e0e0e0;
-      border-radius: 12px;
-      background: #fafafa;
+    .stat-val.highlight {
+      color: var(--accent);
+      text-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
     }
 
-    meter {
+    .stat-val.danger-text {
+      color: var(--danger);
+      text-shadow: 0 0 10px rgba(239, 68, 68, 0.2);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-desc);
+    }
+
+    /* 睡眠趋势图表 */
+    .chart-container {
       width: 100%;
-      height: 24px;
+      height: 120px;
+      background: #070b13;
+      border-radius: 12px;
+      border: 1px solid #1a263c;
+      margin-top: 8px;
+      padding: 8px;
+    }
+
+    canvas#timelineCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* 高级设置面板 */
+    .settings-toggle {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 8px 0 0;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .settings-panel {
+      display: none;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px dashed var(--border-color);
+    }
+
+    .settings-panel.open {
+      display: block;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .setting-row {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .setting-label {
+      font-size: 12px;
+      color: var(--text-desc);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .setting-label span {
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      background: #243553;
+      border-radius: 3px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(6, 182, 212, 0.5);
+    }
+
+    select {
+      background: #0b0f19;
+      color: var(--text-main);
+      border: 1px solid var(--border-color);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    /* 历史记录列表 */
+    .history-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .btn-group-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-clear {
+      background: none;
+      border: none;
+      color: var(--danger);
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .btn-zip {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    ul.recordings-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-height: 380px;
+      overflow-y: auto;
+    }
+
+    li.recording-item {
+      background: rgba(36, 53, 83, 0.25);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 14px;
+      margin-bottom: 10px;
+      transition: transform 0.2s, background-color 0.2s;
+    }
+
+    li.recording-item:hover {
+      background: var(--card-bg-hover);
+    }
+
+    .item-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .item-time {
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .item-volume {
+      color: var(--warning);
+      font-weight: 600;
+    }
+
+    .audio-wrapper {
+      margin-top: 8px;
     }
 
     audio {
       width: 100%;
+      height: 36px;
+      outline: none;
+    }
+
+    .action-row {
+      display: flex;
+      gap: 10px;
       margin-top: 10px;
     }
 
-    a.download {
-      display: inline-block;
-      margin-top: 10px;
-      padding: 8px 12px;
+    .btn-action {
+      flex: 1;
+      border: 1px solid var(--border-color);
+      background: #111c2e;
+      color: var(--text-main);
       border-radius: 10px;
-      background: #1677ff;
-      color: white;
-      text-decoration: none;
+      padding: 8px;
+      font-size: 12px;
       font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      text-decoration: none;
     }
 
-    .danger {
-      color: #b3261e;
-      font-weight: 700;
+    .btn-action:hover {
+      background: var(--border-color);
     }
 
-    .small {
-      font-size: 14px;
-    }
-  </style>
-</head>
-
-<body>
-  <div class="wrap">
-    <h1>打呼噜记录与回放</h1>
-    <p class="muted">
-      网页版原型：检测较响的低频声音，自动保存疑似鼾声片段，可回放和下载。
-      本工具不能诊断睡眠呼吸暂停。
-    </p>
-
-    <div class="card">
-      <button id="startBtn">开始记录</button>
-      <p id="status" class="muted">状态：未开始</p>
-      <meter id="meter" min="0" max="100" value="0"></meter>
-      <p id="formatInfo" class="muted small">录音格式：未检测</p>
-    </div>
-
-    <div class="row">
-      <div class="card">
-        <div>当前音量</div>
-        <div id="db" class="big">0</div>
-        <div class="muted">相对值</div>
-      </div>
-
-      <div class="card">
-        <div>鼾声片段</div>
-        <div id="count" class="big">0</div>
-        <div class="muted">段</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>录音片段</h2>
-      <p class="muted">
-        检测到疑似鼾声后，会自动保存约 8 秒录音。可以直接播放，也可以下载到手机。
-      </p>
-      <ul id="events"></ul>
-    </div>
-
-    <div class="card">
-      <h2>提醒</h2>
-      <p class="muted">
-        <span class="danger">手机锁屏或切后台后，网页录音通常会暂停。</span>
-        睡觉测试时请保持浏览器页面在前台，并把自动锁定设为“永不”。
-      </p>
-      <p class="muted small">
-        Edge 浏览器也是用 iPhone 的 WebKit 内核，所以在 iPhone 上的限制和 Safari 基本一样。
-      </p>
-    </div>
-  </div>
-
-<script>
-let audioContext = null;
-let analyser = null;
-let microphone = null;
-let dataArray = null;
-let running = false;
-
-let streamRef = null;
-let mediaRecorder = null;
-let recordingSnippet = false;
-
-let snoreCount = 0;
-let loudFrames = 0;
-let lastEvent = 0;
-
-const startBtn = document.getElementById("startBtn");
-const statusEl = document.getElementById("status");
-const dbEl = document.getElementById("db");
-const countEl = document.getElementById("count");
-const meter = document.getElementById("meter");
-const events = document.getElementById("events");
-const formatInfo = document.getElementById("formatInfo");
-
-function getSupportedRecordingFormat() {
-  if (!window.MediaRecorder) {
-    return {
-      mimeType: "",
-      ext: "webm",
-      label: "当前浏览器不支持 MediaRecorder"
-    };
-  }
-
-  const candidates = [
-    { mimeType: "audio/mp4", ext: "mp4", label: "MP4" },
-    { mimeType: "audio/mp4;codecs=mp4a.40.2", ext: "mp4", label: "MP4 AAC" },
-    { mimeType: "audio/webm;codecs=opus", ext: "webm", label: "WebM Opus" },
-    { mimeType: "audio/webm", ext: "webm", label: "WebM" }
-  ];
-
-  for (const item of candidates) {
-    try {
-      if (MediaRecorder.isTypeSupported(item.mimeType)) {
-        return item;
-      }
-    } catch (e) {}
-  }
-
-  return {
-    mimeType: "",
-    ext: "webm",
-    label: "浏览器默认格式"
-  };
-}
-
-function pad(num) {
-  return String(num).padStart(2, "0");
-}
-
-function makeFileName(ext) {
-  const d = new Date();
-
-  const name =
-    "snore-" +
-    d.getFullYear() +
-    pad(d.getMonth() + 1) +
-    pad(d.getDate()) +
-    "-" +
-    pad(d.getHours()) +
-    pad(d.getMinutes()) +
-    pad(d.getSeconds()) +
-    "." +
-    ext;
-
-  return name;
-}
-
-function addAudioEvent(blob, value, ext, label) {
-  snoreCount++;
-  countEl.textContent = snoreCount;
-
-  const url = URL.createObjectURL(blob);
-  const timeText = new Date().toLocaleTimeString();
-  const fileName = makeFileName(ext || "webm");
-
-  const li = document.createElement("li");
-
-  const title = document.createElement("div");
-  title.innerHTML =
-    "<strong>" + timeText + "</strong> 疑似鼾声，相对音量 " + value +
-    "<br><span class='muted small'>格式：" + label + "，文件名：" + fileName + "</span>";
-
-  const audio = document.createElement("audio");
-  audio.controls = true;
-  audio.src = url;
-
-  const download = document.createElement("a");
-  download.href = url;
-  download.download = fileName;
-  download.textContent = "保存到手机";
-  download.className = "download";
-
-  const tip = document.createElement("p");
-  tip.className = "muted small";
-  tip.textContent = "如果点按钮没有反应，可以长按“保存到手机”，选择下载链接文件或存储到文件。";
-
-  li.appendChild(title);
-  li.appendChild(audio);
-  li.appendChild(download);
-  li.appendChild(tip);
-
-  events.prepend(li);
-}
-
-function recordSnippet(value) {
-  if (recordingSnippet || !streamRef) return;
-
-  if (!window.MediaRecorder) {
-    statusEl.textContent = "状态：当前浏览器不支持保存录音，只能检测音量。";
-    return;
-  }
-
-  recordingSnippet = true;
-
-  const format = getSupportedRecordingFormat();
-  let chunks = [];
-
-  try {
-    if (format.mimeType) {
-      mediaRecorder = new MediaRecorder(streamRef, { mimeType: format.mimeType });
-    } else {
-      mediaRecorder = new MediaRecorder(streamRef);
+    .btn-action.btn-delete {
+      color: var(--danger);
     }
 
-    mediaRecorder.ondataavailable = function(e) {
-      if (e.data && e.data.size > 0) {
-        chunks.push(e.data);
-      }
-    };
-
-    mediaRecorder.onstop = function() {
-      const blobType = format.mimeType || "audio/webm";
-      const blob = new Blob(chunks, { type: blobType });
-
-      addAudioEvent(blob, value, format.ext, format.label);
-
-      recordingSnippet = false;
-      chunks = [];
-
-      if (running) {
-        statusEl.textContent = "状态：正在记录。请保持页面在前台。";
-      }
-    };
-
-    mediaRecorder.start();
-
-    statusEl.textContent = "状态：检测到疑似鼾声，正在保存约 8 秒录音片段。";
-
-    setTimeout(function() {
-      if (mediaRecorder && mediaRecorder.state === "recording") {
-        mediaRecorder.stop();
-      }
-    }, 8000);
-
-  } catch (e) {
-    console.log("录音片段失败", e);
-    statusEl.textContent = "状态：录音片段保存失败：" + e.message;
-    recordingSnippet = false;
-  }
-}
-
-async function start() {
-  try {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      alert("这个浏览器不支持麦克风录音。请用 Edge 或 Safari 打开 HTTPS 网页。");
-      return;
+    /* 睡眠提示卡片 */
+    .note-card {
+      background: linear-gradient(135deg, #1e1b4b 0%, #11103c 100%);
+      border-color: #2e2a75;
     }
 
-    if (!window.MediaRecorder) {
-      alert("当前浏览器不支持保存录音片段，只能检测音量。建议更新 iOS 或换 Safari / Edge 再试。");
+    .note-card p {
+      font-size: 13px;
+      line-height: 1.6;
+      margin: 8px 0;
+      color: #c7d2fe;
     }
 
-    const format = getSupportedRecordingFormat();
-    formatInfo.textContent = "录音格式：优先使用 " + format.label + "，下载后缀 ." + format.ext;
-
-    streamRef = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: false,
-        noiseSuppression: false,
-        autoGainControl: false
-      }
-    });
-
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-
-    if (audioContext.state === "suspended") {
-      await audioContext.resume();
+    /* 自定义弹窗结构 */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+      padding: 16px;
     }
 
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 2048;
-
-    microphone = audioContext.createMediaStreamSource(streamRef);
-    microphone.connect(analyser);
-
-    dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    running = true;
-    startBtn.textContent = "停止记录";
-    startBtn.classList.add("stop");
-    statusEl.textContent = "状态：正在记录。请保持页面在前台。";
-
-    loop();
-
-  } catch (e) {
-    alert(
-      "无法使用麦克风：" + e.message +
-      "\\n\\n请确认：" +
-      "\\n1. 用 HTTPS 网页打开" +
-      "\\n2. 已允许麦克风权限" +
-      "\\n3. 浏览器页面保持前台"
-    );
-  }
-}
-
-function stop() {
-  running = false;
-
-  if (mediaRecorder && mediaRecorder.state === "recording") {
-    mediaRecorder.stop();
-  }
-
-  if (streamRef) {
-    streamRef.getTracks().forEach(function(track) {
-      track.stop();
-    });
-    streamRef = null;
-  }
-
-  if (audioContext) {
-    audioContext.close();
-    audioContext = null;
-  }
-
-  startBtn.textContent = "开始记录";
-  startBtn.classList.remove("stop");
-  statusEl.textContent = "状态：已停止";
-}
-
-function loop() {
-  if (!running || !analyser || !dataArray) return;
-
-  analyser.getByteFrequencyData(dataArray);
-
-  let low = 0;
-  const n = Math.floor(dataArray.length / 4);
-
-  for (let i = 0; i < n; i++) {
-    low += dataArray[i];
-  }
-
-  low = Math.round(low / n);
-
-  dbEl.textContent = low;
-  meter.value = low;
-
-  if (low > 35) {
-    loudFrames++;
-  } else {
-    loudFrames = 0;
-  }
-
-  const now = Date.now();
-
-  if (loudFrames >= 8 && now - lastEvent > 12000) {
-    lastEvent = now;
-    recordSnippet(low);
-  }
-
-  requestAnimationFrame(loop);
-}
-
-startBtn.onclick = function() {
-  if (running) {
-    stop();
-  } else {
-    start();
-  }
-};
-</script>
-</body>
-</html>
+    .modal-overlay.open {
+      opacity: 1;
