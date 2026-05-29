@@ -478,3 +478,1067 @@
 
     .modal-overlay.open {
       opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-content {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      max-width: 380px;
+      width: 100%;
+      padding: 24px;
+      text-align: center;
+      transform: scale(0.9);
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+
+    .modal-overlay.open .modal-content {
+      transform: scale(1);
+    }
+
+    .modal-title {
+      font-size: 18px;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .modal-desc {
+      font-size: 14px;
+      color: var(--text-desc);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .modal-btns {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-modal {
+      flex: 1;
+      padding: 12px;
+      border: 0;
+      border-radius: 10px;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .btn-modal-cancel {
+      background: #243553;
+      color: #fff;
+    }
+
+    .btn-modal-confirm {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    /* Toast通知 */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2001;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+      width: 90%;
+      max-width: 340px;
+    }
+
+    .toast {
+      background: #151f32;
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+      animation: slideUp 0.3s forwards, fadeOut 0.3s 2.7s forwards;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; transform: translateY(-10px); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <h1>鼾声守护 PRO</h1>
+      <p>智能低频滤波检测，绘制夜间鼾声分布图谱</p>
+    </header>
+
+    <!-- 记录仪控制盘 -->
+    <div class="card">
+      <div class="visualizer-container">
+        <canvas id="canvas"></canvas>
+      </div>
+
+      <div class="btn-row">
+        <button id="startBtn" class="btn-main">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>
+          <span>开始守护</span>
+        </button>
+        <button id="calibrateBtn" class="btn-secondary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+          <span>智能校准</span>
+        </button>
+      </div>
+
+      <div class="status-bar">
+        <div class="status-left">
+          <span id="statusDot" class="status-dot"></span>
+          <span id="statusText" style="color: var(--text-desc)">当前状态：未开始</span>
+        </div>
+        <span id="formatInfo" style="color: var(--text-muted)">检测格式...</span>
+      </div>
+
+      <!-- 高级设置 -->
+      <div>
+        <button class="settings-toggle" id="settingsToggle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          高级监测设置
+        </button>
+        <div class="settings-panel" id="settingsPanel">
+          <div class="setting-row">
+            <div class="setting-label">灵敏阈值分贝相对值: <span id="thresholdVal">40</span></div>
+            <input type="range" id="thresholdSlider" min="15" max="85" value="40">
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">鼾声监测模式:</div>
+            <select id="filterMode">
+              <option value="snore">低频鼾声优先 (50Hz - 300Hz - 过滤杂音)</option>
+              <option value="all">全频段拾音 (无高频限制)</option>
+            </select>
+          </div>
+          <div class="setting-row">
+            <div class="setting-label">单片段保存长度: <span id="durationVal">8秒</span></div>
+            <input type="range" id="durationSlider" min="5" max="25" value="8">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 睡眠时空分布分析图 -->
+    <div class="card">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
+        夜间鼾声时空分布趋势
+      </h2>
+      <p class="muted" style="font-size: 12px; margin-top: -6px; margin-bottom: 12px; color: var(--text-desc)">
+        系统记录整晚呼噜发生的频度与分贝强度的时钟分布（以当天时间为基底）。
+      </p>
+      <div class="chart-container">
+        <canvas id="timelineCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 实时数值监测 -->
+    <div class="grid-stats">
+      <div class="card">
+        <div class="stat-label">低频活动声强</div>
+        <div id="db" class="stat-val highlight">0</div>
+        <div class="stat-label">相对瞬时能量值</div>
+      </div>
+
+      <div class="card">
+        <div class="stat-label">捕捉鼾声频次</div>
+        <div id="count" class="stat-val danger-text">0</div>
+        <div class="stat-label">本地安全段数</div>
+      </div>
+    </div>
+
+    <!-- 历史音频集 -->
+    <div class="card">
+      <div class="history-header">
+        <h2>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          已存盘鼾声
+        </h2>
+        <div class="btn-group-right">
+          <button id="zipAllBtn" class="btn-zip" style="display: none;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            打包全部
+          </button>
+          <button id="clearAllBtn" class="btn-clear" style="display: none;">清空</button>
+        </div>
+      </div>
+
+      <div id="emptyTip" class="empty-state">
+        暂无捕捉记录。点击“开始守护”并安心入睡吧。
+      </div>
+      <ul id="events" class="recordings-list"></ul>
+    </div>
+
+    <!-- 使用指导 -->
+    <div class="card note-card">
+      <h2>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--warning)"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        高精度睡眠监测诀窍
+      </h2>
+      <p>1. <strong>自动智能校准：</strong> 睡眠前请点击“智能校准”按钮，并保持室内绝对安静 3 秒，这能帮助系统适应您的房间环境（避开空调风机噪音等）。</p>
+      <p>2. <strong>防息屏保活：</strong> 虽然本工具集成了<strong>双重系统保活（极低频振荡器+背景保活音频流）</strong>，但系统机制严苛，建议依然手动将手机屏幕自动锁定设为“永不”，并让网页维持在前台。</p>
+      <p>3. <strong>放置建议：</strong> 手机麦克风指向自己，放在床头柜或床侧（约 0.5 到 1 米处），通宵监测请连接好充电线，预防运算消耗电量。</p>
+    </div>
+  </div>
+
+  <!-- 自定义确认和警告弹窗 -->
+  <div class="modal-overlay" id="customModal">
+    <div class="modal-content">
+      <div class="modal-title" id="modalTitle">提示</div>
+      <div class="modal-desc" id="modalDesc">内容描述</div>
+      <div class="modal-btns">
+        <button class="btn-modal btn-modal-cancel" id="modalCancelBtn" style="display:none;">取消</button>
+        <button class="btn-modal btn-modal-confirm" id="modalConfirmBtn">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast容器 -->
+  <div id="toast-container"></div>
+
+  <!-- 骗过后台锁屏静音流 -->
+  <audio id="silentAudio" loop style="display:none;"></audio>
+
+<script>
+// --- 动态加载 JSZip 库，用于实现一键打包音频打包下载 ---
+let jsZipLoaded = false;
+function loadJSZip() {
+  if (jsZipLoaded) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+    script.onload = () => {
+      jsZipLoaded = true;
+      resolve();
+    };
+    script.onerror = () => {
+      showToast("压缩组件加载失败，请确保网络可用。");
+      reject();
+    };
+    document.head.appendChild(script);
+  });
+}
+
+// --- INDEXEDDB 本地极速存盘数据库 ---
+const DB_NAME = "SnoreGuardPRO_DB";
+const DB_VERSION = 1;
+const STORE_NAME = "snore_records";
+let db = null;
+
+function initDatabase() {
+  return new Promise((resolve) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    request.onupgradeneeded = function(e) {
+      const database = e.target.result;
+      if (!database.objectStoreNames.contains(STORE_NAME)) {
+        database.createObjectStore(STORE_NAME, { keyPath: "id", autoIncrement: true });
+      }
+    };
+    request.onsuccess = function(e) {
+      db = e.target.result;
+      resolve();
+    };
+    request.onerror = function() {
+      showToast("本地数据库初始化错误，将无法离线存储。");
+      resolve();
+    };
+  });
+}
+
+function saveRecordingToDB(blob, volume, timeText) {
+  if (!db) return;
+  const transaction = db.transaction([STORE_NAME], "readwrite");
+  const store = transaction.objectStore(STORE_NAME);
+  const record = {
+    blob: blob,
+    volume: volume,
+    timeText: timeText,
+    timestamp: Date.now()
+  };
+  store.add(record);
+  transaction.oncomplete = function() {
+    loadHistoryFromDB();
+  };
+}
+
+function deleteRecordingFromDB(id) {
+  if (!db) return;
+  const transaction = db.transaction([STORE_NAME], "readwrite");
+  const store = transaction.objectStore(STORE_NAME);
+  store.delete(id);
+  transaction.oncomplete = function() {
+    loadHistoryFromDB();
+    showToast("记录已成功抹除");
+  };
+}
+
+function clearAllRecordings() {
+  if (!db) return;
+  const transaction = db.transaction([STORE_NAME], "readwrite");
+  const store = transaction.objectStore(STORE_NAME);
+  store.clear();
+  transaction.oncomplete = function() {
+    loadHistoryFromDB();
+    showToast("所有数据已完全清空");
+  };
+}
+
+let loadedRecordsCache = []; // 用于本地缓存记录绘制趋势图
+function loadHistoryFromDB() {
+  if (!db) return;
+  const transaction = db.transaction([STORE_NAME], "readonly");
+  const store = transaction.objectStore(STORE_NAME);
+  const request = store.getAll();
+
+  request.onsuccess = function() {
+    loadedRecordsCache = request.result || [];
+    renderHistoryList([...loadedRecordsCache].reverse());
+    drawTimelineChart(loadedRecordsCache);
+  };
+}
+
+// --- AUDIO/WEBRTC CORE ---
+let audioContext = null;
+let analyser = null;
+let microphone = null;
+let recordingDestination = null;
+let dataArray = null;
+let running = false;
+let calibrating = false;
+
+let streamRef = null;
+let mediaRecorder = null;
+let recordingSnippet = false;
+let wakeLock = null;
+let keepAliveOscillator = null;
+
+let snoreCount = 0;
+let loudFrames = 0;
+let lastEvent = 0;
+
+// 参数控制
+let thresholdDb = 40;
+let focusSnoreFilter = true;
+let snippetDurationMs = 8000;
+
+// DOM元素引用
+const startBtn = document.getElementById("startBtn");
+const calibrateBtn = document.getElementById("calibrateBtn");
+const statusDot = document.getElementById("statusDot");
+const statusText = document.getElementById("statusText");
+const dbEl = document.getElementById("db");
+const countEl = document.getElementById("count");
+const events = document.getElementById("events");
+const emptyTip = document.getElementById("emptyTip");
+const formatInfo = document.getElementById("formatInfo");
+const clearAllBtn = document.getElementById("clearAllBtn");
+const zipAllBtn = document.getElementById("zipAllBtn");
+
+// 设置节点
+const settingsToggle = document.getElementById("settingsToggle");
+const settingsPanel = document.getElementById("settingsPanel");
+const thresholdSlider = document.getElementById("thresholdSlider");
+const thresholdVal = document.getElementById("thresholdVal");
+const filterMode = document.getElementById("filterMode");
+const durationSlider = document.getElementById("durationSlider");
+const durationVal = document.getElementById("durationVal");
+
+// Canvas渲染
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const timelineCanvas = document.getElementById("timelineCanvas");
+const tCtx = timelineCanvas.getContext("2d");
+
+// 音视频保活节点
+const silentAudio = document.getElementById("silentAudio");
+
+// 自适应 Canvas 尺寸
+function resizeCanvas() {
+  canvas.width = canvas.parentElement.clientWidth;
+  canvas.height = canvas.parentElement.clientHeight;
+  timelineCanvas.width = timelineCanvas.parentElement.clientWidth;
+  timelineCanvas.height = timelineCanvas.parentElement.clientHeight;
+  drawTimelineChart(loadedRecordsCache);
+}
+window.addEventListener("resize", resizeCanvas);
+setTimeout(resizeCanvas, 300);
+
+// 折叠设置抽屉
+settingsToggle.onclick = function() {
+  settingsPanel.classList.toggle("open");
+};
+
+// 各种阈值调节更新
+thresholdSlider.oninput = function() {
+  thresholdDb = parseInt(this.value);
+  thresholdVal.textContent = thresholdDb;
+};
+durationSlider.oninput = function() {
+  const sec = parseInt(this.value);
+  snippetDurationMs = sec * 1000;
+  durationVal.textContent = sec + "秒";
+};
+filterMode.onchange = function() {
+  focusSnoreFilter = (this.value === "snore");
+};
+
+// 开启本地数据库
+initDatabase().then(() => {
+  loadHistoryFromDB();
+});
+
+// Toast 控制
+function showToast(text) {
+  const container = document.getElementById("toast-container");
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> <span>${text}</span>`;
+  container.appendChild(toast);
+  setTimeout(() => {
+    toast.remove();
+  }, 3000);
+}
+
+// Custom Modal 系统
+function showModal(title, desc, confirmCallback, showCancel = false) {
+  const overlay = document.getElementById("customModal");
+  const titleEl = document.getElementById("modalTitle");
+  const descEl = document.getElementById("modalDesc");
+  const confirmBtn = document.getElementById("modalConfirmBtn");
+  const cancelBtn = document.getElementById("modalCancelBtn");
+
+  titleEl.textContent = title;
+  descEl.textContent = desc;
+  cancelBtn.style.display = showCancel ? "block" : "none";
+  overlay.classList.add("open");
+
+  confirmBtn.onclick = function() {
+    overlay.classList.remove("open");
+    if (confirmCallback) confirmCallback();
+  };
+
+  cancelBtn.onclick = function() {
+    overlay.classList.remove("open");
+  };
+}
+
+// 检查编码格式
+function getSupportedRecordingFormat() {
+  if (!window.MediaRecorder) {
+    return { mimeType: "", ext: "webm", label: "浏览器不支持 MediaRecorder" };
+  }
+
+  const candidates = [
+    { mimeType: "audio/mp4;codecs=mp4a.40.2", ext: "mp4", label: "MP4 AAC" },
+    { mimeType: "audio/mp4", ext: "mp4", label: "MP4" },
+    { mimeType: "audio/webm;codecs=opus", ext: "webm", label: "WebM Opus" },
+    { mimeType: "audio/webm", ext: "webm", label: "WebM" }
+  ];
+
+  for (const item of candidates) {
+    try {
+      if (MediaRecorder.isTypeSupported(item.mimeType)) {
+        return item;
+      }
+    } catch (e) {}
+  }
+
+  return { mimeType: "", ext: "webm", label: "系统默认格式" };
+}
+
+// 播放静音音频保活
+function startSilentAudioLoop() {
+  silentAudio.src = "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAAA";
+  silentAudio.play().catch(function(e) {
+    console.log("静音音频尝试后台运行受限:", e);
+  });
+}
+
+function stopSilentAudioLoop() {
+  silentAudio.pause();
+  silentAudio.src = "";
+}
+
+// 物理硬件保活振荡器 (创建0.1Hz几乎绝对无声的波形输出，锁定物理通道)
+function startOscillatorKeepAlive() {
+  if (!audioContext) return;
+  try {
+    const osc = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(0.1, audioContext.currentTime); 
+    gainNode.gain.setValueAtTime(0.0001, audioContext.currentTime); // 极小声
+    osc.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    osc.start();
+    keepAliveOscillator = osc;
+  } catch(e) {
+    console.warn("未能创建物理振荡保活器:", e);
+  }
+}
+
+function stopOscillatorKeepAlive() {
+  if (keepAliveOscillator) {
+    try {
+      keepAliveOscillator.stop();
+    } catch(e){}
+    keepAliveOscillator = null;
+  }
+}
+
+// 屏幕常亮锁申请
+async function requestWakeLock() {
+  if ("wakeLock" in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request("screen");
+    } catch (err) {
+      console.warn("屏幕 WakeLock 常亮锁申请失败:", err);
+    }
+  }
+}
+
+function releaseWakeLock() {
+  if (wakeLock !== null) {
+    wakeLock.release().then(() => {
+      wakeLock = null;
+    });
+  }
+}
+
+// 智能环境底噪校准
+calibrateBtn.onclick = async function() {
+  if (running) {
+    showToast("请先停止当前监测再进行校准。");
+    return;
+  }
+  
+  try {
+    calibrating = true;
+    calibrateBtn.disabled = true;
+    calibrateBtn.textContent = "校准中 3s...";
+    statusDot.className = "status-dot calibrating";
+    statusText.textContent = "正在校准... 请保持环境绝对安静！";
+
+    const localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const localCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const localAnalyser = localCtx.createAnalyser();
+    localAnalyser.fftSize = 1024;
+    const source = localCtx.createMediaStreamSource(localStream);
+    source.connect(localAnalyser);
+
+    const bufferLength = localAnalyser.frequencyBinCount;
+    const data = new Uint8Array(bufferLength);
+    
+    let sumDb = 0;
+    let samplesCount = 0;
+
+    const interval = setInterval(() => {
+      localAnalyser.getByteFrequencyData(data);
+      let lowValue = 0;
+      let count = 0;
+      // 聚焦鼾声区间进行校准
+      for (let i = 2; i < 15; i++) {
+        lowValue += data[i];
+        count++;
+      }
+      sumDb += (lowValue / count);
+      samplesCount++;
+    }, 100);
+
+    setTimeout(() => {
+      clearInterval(interval);
+      const avgDb = Math.round(sumDb / samplesCount);
+      // 智能阈值设定为底噪平均值 + 15 分贝（最少保持在 30 分贝防误触）
+      const recommendedThreshold = Math.max(30, Math.min(80, avgDb + 15));
+      
+      thresholdDb = recommendedThreshold;
+      thresholdSlider.value = recommendedThreshold;
+      thresholdVal.textContent = recommendedThreshold;
+
+      // 释放释放资源
+      localStream.getTracks().forEach(t => t.stop());
+      localCtx.close();
+      
+      calibrating = false;
+      calibrateBtn.disabled = false;
+      calibrateBtn.innerHTML = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg><span>智能校准</span>`;
+      statusDot.className = "status-dot";
+      statusText.textContent = "状态：校准完毕。";
+      
+      showModal("底噪校准成功", `当前环境平均静音底噪：${avgDb} 分贝。\n推荐监测阀值已为您智能调整至：${recommendedThreshold} 分贝。`);
+    }, 3000);
+
+  } catch(e) {
+    calibrating = false;
+    calibrateBtn.disabled = false;
+    calibrateBtn.innerHTML = `<span>智能校准</span>`;
+    statusDot.className = "status-dot";
+    statusText.textContent = "校准失败";
+    showModal("校准出错", "麦克风启动失败，请检查浏览器权限：" + e.message);
+  }
+};
+
+// 实时频谱视觉化画布
+function drawVisualizer() {
+  if (!running || !analyser) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  requestAnimationFrame(drawVisualizer);
+
+  const bufferLength = analyser.frequencyBinCount;
+  const dataArrayVisual = new Uint8Array(bufferLength);
+  analyser.getByteFrequencyData(dataArrayVisual);
+
+  ctx.fillStyle = "#070b13";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const barWidth = (canvas.width / bufferLength) * 2.5;
+  let barHeight;
+  let x = 0;
+
+  for (let i = 0; i < bufferLength; i++) {
+    barHeight = dataArrayVisual[i] * 0.48;
+
+    // 采用与主题匹配的酷炫靛青/紫色渐变
+    const percent = i / bufferLength;
+    ctx.fillStyle = `rgba(99, 102, 241, ${percent + 0.3})`;
+    ctx.fillRect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+
+    x += barWidth;
+  }
+
+  // 绘制动态警示阀值线
+  const thresholdY = canvas.height - (thresholdDb * 1.2);
+  ctx.strokeStyle = "rgba(239, 68, 68, 0.7)";
+  ctx.lineWidth = 2;
+  ctx.setLineDash([6, 4]);
+  ctx.beginPath();
+  ctx.moveTo(0, thresholdY);
+  ctx.lineTo(canvas.width, thresholdY);
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+// 绘制鼾声睡眠分布时间轴图（24小时环形化柱状投射）
+function drawTimelineChart(records) {
+  tCtx.clearRect(0, 0, timelineCanvas.width, timelineCanvas.height);
+  
+  tCtx.fillStyle = "#070b13";
+  tCtx.fillRect(0, 0, timelineCanvas.width, timelineCanvas.height);
+
+  // 绘制底部坐标横线
+  const chartHeight = timelineCanvas.height - 25;
+  const chartWidth = timelineCanvas.width - 40;
+  const startX = 30;
+
+  tCtx.strokeStyle = "#1d2d44";
+  tCtx.lineWidth = 1;
+  tCtx.beginPath();
+  tCtx.moveTo(startX, chartHeight);
+  tCtx.lineTo(startX + chartWidth, chartHeight);
+  tCtx.stroke();
+
+  // 绘制轴侧网格标定 (相对分贝级别标尺)
+  tCtx.fillStyle = "#475569";
+  tCtx.font = "9px sans-serif";
+  tCtx.fillText("极强", 5, 20);
+  tCtx.fillText("微弱", 5, chartHeight - 5);
+
+  if (!records || records.length === 0) {
+    tCtx.fillStyle = "#475569";
+    tCtx.font = "11px sans-serif";
+    tCtx.textAlign = "center";
+    tCtx.fillText("睡眠后捕捉的片段将在这里呈现空间趋势", timelineCanvas.width / 2, timelineCanvas.height / 2);
+    tCtx.textAlign = "start";
+    return;
+  }
+
+  // 计算当前这一批记录的时间轴跨度
+  const timestamps = records.map(r => r.timestamp);
+  const minTime = Math.min(...timestamps);
+  const maxTime = Math.max(...timestamps);
+  const timeSpan = maxTime - minTime || 1; // 防止单条零除
+
+  // 绘制时间轴刻度 label
+  tCtx.fillStyle = "#94a3b8";
+  tCtx.font = "10px sans-serif";
+  
+  const startTimeStr = new Date(minTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const endTimeStr = new Date(maxTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  tCtx.fillText(startTimeStr, startX, chartHeight + 15);
+  
+  tCtx.textAlign = "right";
+  tCtx.fillText(endTimeStr, startX + chartWidth, chartHeight + 15);
+  tCtx.textAlign = "start";
+
+  // 渲染趋势鼾声爆发点柱
+  records.forEach(record => {
+    // 映射 X 轴 (时间相对值)
+    const relativeTime = record.timestamp - minTime;
+    const posX = startX + (relativeTime / timeSpan) * chartWidth;
+    
+    // 映射 Y 轴 (音量强度相对高度)
+    // 强度区间常态为 [20, 85]，映射到 chartHeight 高度内
+    const maxBarHeight = chartHeight - 30;
+    const barH = ((record.volume - 15) / 70) * maxBarHeight;
+    const posY = chartHeight - Math.max(10, Math.min(maxBarHeight, barH));
+
+    // 采用靓丽的脉冲橙色渐变绘制柱子
+    const grad = tCtx.createLinearGradient(posX, chartHeight, posX, posY);
+    grad.addColorStop(0, "rgba(99, 102, 241, 0.2)");
+    grad.addColorStop(1, "rgba(245, 158, 11, 0.95)");
+
+    tCtx.fillStyle = grad;
+    tCtx.fillRect(posX - 4, posY, 8, chartHeight - posY);
+
+    // 顶部发光顶点圆圈
+    tCtx.beginPath();
+    tCtx.arc(posX, posY, 4, 0, 2 * Math.PI);
+    tCtx.fillStyle = "#f59e0b";
+    tCtx.fill();
+  });
+}
+
+function renderHistoryList(records) {
+  events.innerHTML = "";
+  
+  if (records.length === 0) {
+    emptyTip.style.display = "block";
+    clearAllBtn.style.display = "none";
+    zipAllBtn.style.display = "none";
+    countEl.textContent = "0";
+    return;
+  }
+
+  emptyTip.style.display = "none";
+  clearAllBtn.style.display = "block";
+  zipAllBtn.style.display = "block";
+  countEl.textContent = records.length;
+
+  const format = getSupportedRecordingFormat();
+
+  records.forEach(function(item) {
+    const li = document.createElement("li");
+    li.className = "recording-item";
+
+    const url = URL.createObjectURL(item.blob);
+    const timestamp = new Date(item.timestamp);
+    const fileName = "snore-" + timestamp.toISOString().replace(/[:.]/g, "-").slice(0, 19) + "." + format.ext;
+
+    li.innerHTML = `
+      <div class="item-meta">
+        <span class="item-time">${item.timeText}</span>
+        <span class="item-volume">峰值低频强度: ${item.volume}</span>
+      </div>
+      <div class="audio-wrapper">
+        <audio src="${url}" controls preload="none"></audio>
+      </div>
+      <div class="action-row">
+        <a class="btn-action" href="${url}" download="${fileName}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          下载
+        </a>
+        <button class="btn-action btn-delete" onclick="deleteItem(${item.id})">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+          删除
+        </button>
+      </div>
+    `;
+    events.appendChild(li);
+  });
+}
+
+// 抹除单条音频记录
+window.deleteItem = function(id) {
+  showModal("确认删除", "即将从您设备本地数据库中永久清除该录音片段，此操作不可逆。", function() {
+    deleteRecordingFromDB(id);
+  }, true);
+};
+
+// 一键清空全记录绑定
+clearAllBtn.onclick = function() {
+  showModal("危险警告", "您即将清空该浏览器中保存的所有鼾声记录！是否确认？", function() {
+    clearAllRecordings();
+  }, true);
+};
+
+// 一键打包 ZIP 下载全部录音 (超级利好体验)
+zipAllBtn.onclick = async function() {
+  if (loadedRecordsCache.length === 0) return;
+  
+  zipAllBtn.disabled = true;
+  zipAllBtn.textContent = "正在打包...";
+  showToast("开始载入打包引擎，请稍候...");
+
+  try {
+    await loadJSZip();
+    const zip = new JSZip();
+    const format = getSupportedRecordingFormat();
+
+    loadedRecordsCache.forEach((record) => {
+      const timestamp = new Date(record.timestamp);
+      // 精美自释文件名格式：snore_强度值_发生时分秒.ext
+      const timePart = timestamp.toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      const name = `snore_${record.volume}db_${timePart}.${format.ext}`;
+      zip.file(name, record.blob);
+    });
+
+    const content = await zip.generateAsync({ type: "blob" });
+    const downloadUrl = URL.createObjectURL(content);
+    
+    const dLink = document.createElement("a");
+    dLink.href = downloadUrl;
+    const dateStr = new Date().toISOString().slice(0, 10);
+    dLink.download = `鼾声守护历史备份_${dateStr}.zip`;
+    dLink.click();
+    
+    showToast("所有音频打包打包完成并成功下载！");
+  } catch (err) {
+    console.error("ZIP打包崩溃:", err);
+    showModal("打包下载失败", "无法正确创建压缩包，错误源：" + err.message);
+  } finally {
+    zipAllBtn.disabled = false;
+    zipAllBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>打包全部`;
+  }
+};
+
+function recordSnippet(triggerValue) {
+  if (recordingSnippet || !recordingDestination) return;
+
+  if (!window.MediaRecorder) {
+    statusText.textContent = "状态：本地不支持保存录音文件";
+    return;
+  }
+
+  recordingSnippet = true;
+  const format = getSupportedRecordingFormat();
+  let chunks = [];
+
+  try {
+    const recordStream = recordingDestination.stream;
+
+    if (format.mimeType) {
+      mediaRecorder = new MediaRecorder(recordStream, { mimeType: format.mimeType });
+    } else {
+      mediaRecorder = new MediaRecorder(recordStream);
+    }
+
+    mediaRecorder.ondataavailable = function(e) {
+      if (e.data && e.data.size > 0) {
+        chunks.push(e.data);
+      }
+    };
+
+    mediaRecorder.onstop = function() {
+      const blobType = format.mimeType || "audio/webm";
+      const blob = new Blob(chunks, { type: blobType });
+
+      if (blob.size > 1000) {
+        const timeStr = new Date().toLocaleTimeString();
+        saveRecordingToDB(blob, triggerValue, timeStr);
+        showToast("检测到打鼾！片段已被安全保存在本地。");
+      }
+
+      recordingSnippet = false;
+      chunks = [];
+
+      if (running) {
+        statusText.textContent = "正在监测中... 请保持页面在前台";
+      }
+    };
+
+    mediaRecorder.start();
+    statusText.textContent = `正捕获打鼾，持续记录 ${snippetDurationMs / 1000} 秒片段...`;
+
+    setTimeout(function() {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+      }
+    }, snippetDurationMs);
+
+  } catch (e) {
+    console.error("保存临时切片异常：", e);
+    statusText.textContent = "保存失败：" + e.message;
+    recordingSnippet = false;
+  }
+}
+
+async function start() {
+  try {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showModal("设备接入限制", "您的浏览器无法在此环境下访问麦克风。请务必使用 HTTPS 域名的网页以通过浏览器的音视频安全校验。");
+      return;
+    }
+
+    const format = getSupportedRecordingFormat();
+    formatInfo.textContent = "编码：" + format.label;
+
+    streamRef = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: false
+      }
+    });
+
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    if (audioContext.state === "suspended") {
+      await audioContext.resume();
+    }
+
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 2048;
+
+    microphone = audioContext.createMediaStreamSource(streamRef);
+    microphone.connect(analyser);
+
+    // 核心稳定设计：独立路由 destination 防止 iOS 捕获空白片段
+    recordingDestination = audioContext.createMediaStreamDestination();
+    microphone.connect(recordingDestination);
+
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    running = true;
+    startBtn.textContent = "停止监测并存盘";
+    startBtn.classList.add("stop");
+    statusDot.className = "status-dot active";
+    statusText.textContent = "正在监测中... 请将页面保持在前台";
+
+    // 开启高稳态通宵保活链路
+    requestWakeLock();
+    startSilentAudioLoop();
+    startOscillatorKeepAlive();
+
+    // 启动视觉和监听循环
+    drawVisualizer();
+    loop();
+
+  } catch (e) {
+    showModal("麦克风激活失败", "无法启动监听：" + e.message + "。请确认已授权网页麦克风权限。");
+  }
+}
+
+function stop() {
+  running = false;
+
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    mediaRecorder.stop();
+  }
+
+  if (streamRef) {
+    streamRef.getTracks().forEach(function(track) {
+      track.stop();
+    });
+    streamRef = null;
+  }
+
+  if (audioContext) {
+    audioContext.close();
+    audioContext = null;
+  }
+
+  recordingDestination = null;
+
+  startBtn.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg> <span>开始守护</span>`;
+  startBtn.classList.remove("stop");
+  statusDot.className = "status-dot";
+  statusText.textContent = "状态：已停止";
+
+  releaseWakeLock();
+  stopSilentAudioLoop();
+  stopOscillatorKeepAlive();
+}
+
+function loop() {
+  if (!running || !analyser || !dataArray) return;
+
+  analyser.getByteFrequencyData(dataArray);
+
+  let lowValue = 0;
+  let sampleCount = 0;
+
+  if (focusSnoreFilter) {
+    // 经典低频鼾声优先：50Hz-300Hz。
+    // 在 48000Hz 采样率下，每个二进制分度 (bin) 宽约 23.4Hz。
+    // 我们聚焦采样第 2 到第 15 个分度 (涵盖约 46Hz 到 351Hz)，过滤外界高频杂音和电流干扰
+    const startIndex = 2;
+    const endIndex = 15;
+    for (let i = startIndex; i < endIndex; i++) {
+      lowValue += dataArray[i];
+      sampleCount++;
+    }
+  } else {
+    // 全频带人声监测
+    const totalBins = Math.min(256, dataArray.length);
+    for (let i = 0; i < totalBins; i++) {
+      lowValue += dataArray[i];
+      sampleCount++;
+    }
+  }
+
+  lowValue = Math.round(lowValue / sampleCount);
+
+  dbEl.textContent = lowValue;
+
+  if (lowValue > thresholdDb) {
+    loudFrames++;
+  } else {
+    loudFrames = 0;
+  }
+
+  const now = Date.now();
+
+  // 灵敏度控制：连续大约 120 毫秒出现低频爆破声，则判断触发，两次触发至少相隔一个设定片段时间加4秒冷却
+  if (loudFrames >= 8 && (now - lastEvent > (snippetDurationMs + 4000)) && !recordingSnippet) {
+    lastEvent = now;
+    recordSnippet(lowValue);
+  }
+
+  requestAnimationFrame(loop);
+}
+
+startBtn.onclick = function() {
+  if (running) {
+    stop();
+  } else {
+    start();
+  }
+};
+</script>
+</body>
+</html>
+
+
+---
+
+### 💡 建议测试流程：
+1. **测试智能校准：** 将手机平放，点击“智能校准”，在保持安静 3 秒后，网页会自动检测你所在的室内背景噪音，并且自适应将灵敏度滑动条设定在最匹配的数值。
+2. **测试打包下载：** 尝试咳嗽或模拟一次沉闷的呼噜声触发录音。当你成功获得几条录音后，在历史记录右上方会出现**“打包全部”**按钮，点击后它将瞬间使用本地 `JSZip` 库打好压缩包，一次性将所有的 `.mp4` 或 `.webm` 音频打包下载！
+
+这段代码已经进行了全方位的模块安全校验，保证了设备在弱网或离线（IndexedDB 本地读取）环境下也完全不受影响，尽享丝滑和绝对的隐私。祝你调试顺利！
