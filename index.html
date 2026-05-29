@@ -75,6 +75,11 @@
       overflow: hidden;
     }
 
+    .card.active-play {
+      border-color: var(--warning);
+      box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+    }
+
     .card h2 {
       font-size: 16px;
       font-weight: 700;
@@ -237,12 +242,13 @@
     /* 睡眠趋势图表 */
     .chart-container {
       width: 100%;
-      height: 120px;
+      height: 160px;
       background: #070b13;
       border-radius: 12px;
       border: 1px solid #1a263c;
       margin-top: 8px;
       padding: 8px;
+      position: relative;
     }
 
     canvas#timelineCanvas {
@@ -378,11 +384,16 @@
       border-radius: 14px;
       padding: 14px;
       margin-bottom: 10px;
-      transition: transform 0.2s, background-color 0.2s;
+      transition: transform 0.2s, background-color 0.2s, border-color 0.2s;
     }
 
     li.recording-item:hover {
       background: var(--card-bg-hover);
+    }
+
+    li.recording-item.playing-active {
+      border-color: var(--warning);
+      background: rgba(245, 158, 11, 0.08);
     }
 
     .item-meta {
@@ -586,7 +597,7 @@
   <div class="wrap">
     <header>
       <h1>鼾声守护 PRO</h1>
-      <p>智能低频滤波检测，绘制夜间鼾声分布图谱</p>
+      <p>智能低频滤波检测，交互式夜间鼾声曲线图谱</p>
     </header>
 
     <!-- 记录仪控制盘 -->
@@ -644,10 +655,10 @@
     <div class="card">
       <h2>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent)"><path d="M12 20V10M18 20V4M6 20v-4"/></svg>
-        夜间鼾声时空分布趋势
+        睡眠鼾声声强随时间趋势图
       </h2>
       <p class="muted" style="font-size: 12px; margin-top: -6px; margin-bottom: 12px; color: var(--text-desc)">
-        系统记录整晚呼噜发生的频度与分贝强度的时钟分布（以当天时间为基底）。
+        捕捉数据的声强起伏折线。<strong>可将鼠标悬浮查看详情，或直接点击曲线上的圆点节点播放对应音频！</strong>
       </p>
       <div class="chart-container">
         <canvas id="timelineCanvas"></canvas>
@@ -789,6 +800,10 @@ function deleteRecordingFromDB(id) {
   const store = transaction.objectStore(STORE_NAME);
   store.delete(id);
   transaction.oncomplete = function() {
+    // 如果删除的正是正在播放的音频，先停止播放
+    if (activePlayingId === id) {
+      stopChartAudio();
+    }
     loadHistoryFromDB();
     showToast("记录已成功抹除");
   };
@@ -800,6 +815,7 @@ function clearAllRecordings() {
   const store = transaction.objectStore(STORE_NAME);
   store.clear();
   transaction.oncomplete = function() {
+    stopChartAudio();
     loadHistoryFromDB();
     showToast("所有数据已完全清空");
   };
@@ -837,6 +853,14 @@ let keepAliveOscillator = null;
 let snoreCount = 0;
 let loudFrames = 0;
 let lastEvent = 0;
+
+// 全局图表交互与音频播放关联变量
+let activePlayingId = null; // 当前正在播放的记录ID
+let chartAudioPlayer = new Audio(); // 全局播放音频流，用于处理点击趋势图节点时的播放
+let chartPoints = []; // 缓存在 Canvas 上的折线点坐标集合，用于检测交互触控
+let hoveredPoint = null; // 鼠标悬浮的对应点
+let rippleRadius = 0; // 当前播放节点扩散的水波纹半径
+let chartAnimationId = null; // 曲线图动画帧句柄
 
 // 参数控制
 let thresholdDb = 40;
@@ -894,6 +918,7 @@ settingsToggle.onclick = function() {
 thresholdSlider.oninput = function() {
   thresholdDb = parseInt(this.value);
   thresholdVal.textContent = thresholdDb;
+  drawTimelineChart(loadedRecordsCache);
 };
 durationSlider.oninput = function() {
   const sec = parseInt(this.value);
@@ -1143,86 +1168,410 @@ function drawVisualizer() {
   ctx.setLineDash([]);
 }
 
-// 绘制鼾声睡眠分布时间轴图（24小时环形化柱状投射）
+// 绘制鼾声睡眠分布时间轴折线趋势图（带高精度分贝曲线及悬浮交互点击播放）
 function drawTimelineChart(records) {
   tCtx.clearRect(0, 0, timelineCanvas.width, timelineCanvas.height);
   
+  // 画布底色
   tCtx.fillStyle = "#070b13";
   tCtx.fillRect(0, 0, timelineCanvas.width, timelineCanvas.height);
 
-  // 绘制底部坐标横线
   const chartHeight = timelineCanvas.height - 25;
-  const chartWidth = timelineCanvas.width - 40;
-  const startX = 30;
+  const chartWidth = timelineCanvas.width - 50;
+  const startX = 35;
 
-  tCtx.strokeStyle = "#1d2d44";
+  // 1. 绘制水平分贝参考标线及刻度标签 (0, 20, 40, 60, 80 dB)
+  tCtx.strokeStyle = "rgba(36, 53, 83, 0.4)";
   tCtx.lineWidth = 1;
+  tCtx.fillStyle = "#475569";
+  tCtx.font = "9px sans-serif";
+
+  const decibelsRef = [20, 40, 60, 80];
+  decibelsRef.forEach(dbLevel => {
+    const maxBarHeight = chartHeight - 25;
+    const posY = chartHeight - ((dbLevel - 15) / 70) * maxBarHeight;
+    
+    tCtx.beginPath();
+    tCtx.moveTo(startX, posY);
+    tCtx.lineTo(startX + chartWidth, posY);
+    tCtx.stroke();
+    
+    tCtx.fillText(dbLevel + " dB", 5, posY + 3);
+  });
+
+  // 2. 绘制当前的阈值参考线 (红色虚线)
+  const maxBarHeight = chartHeight - 25;
+  const redThresholdY = chartHeight - ((thresholdDb - 15) / 70) * maxBarHeight;
+  tCtx.strokeStyle = "rgba(239, 68, 68, 0.45)";
+  tCtx.lineWidth = 1.2;
+  tCtx.setLineDash([4, 4]);
+  tCtx.beginPath();
+  tCtx.moveTo(startX, redThresholdY);
+  tCtx.lineTo(startX + chartWidth, redThresholdY);
+  tCtx.stroke();
+  tCtx.setLineDash([]); // 还原
+  
+  tCtx.fillStyle = "rgba(239, 68, 68, 0.85)";
+  tCtx.fillText("阈值:" + thresholdDb, startX + chartWidth - 45, redThresholdY - 4);
+
+  // 3. 绘制底部基础时间轴横线
+  tCtx.strokeStyle = "#1d2d44";
+  tCtx.lineWidth = 1.5;
   tCtx.beginPath();
   tCtx.moveTo(startX, chartHeight);
   tCtx.lineTo(startX + chartWidth, chartHeight);
   tCtx.stroke();
 
-  // 绘制轴侧网格标定 (相对分贝级别标尺)
-  tCtx.fillStyle = "#475569";
-  tCtx.font = "9px sans-serif";
-  tCtx.fillText("极强", 5, 20);
-  tCtx.fillText("微弱", 5, chartHeight - 5);
-
+  // 空状态判定与绘制
   if (!records || records.length === 0) {
+    chartPoints = [];
     tCtx.fillStyle = "#475569";
     tCtx.font = "11px sans-serif";
     tCtx.textAlign = "center";
-    tCtx.fillText("睡眠后捕捉的片段将在这里呈现空间趋势", timelineCanvas.width / 2, timelineCanvas.height / 2);
+    tCtx.fillText("检测到鼾声触发之后，这里将呈现随时间波动的高精度曲线", timelineCanvas.width / 2, timelineCanvas.height / 2);
     tCtx.textAlign = "start";
     return;
   }
 
-  // 计算当前这一批记录的时间轴跨度
-  const timestamps = records.map(r => r.timestamp);
-  const minTime = Math.min(...timestamps);
-  const maxTime = Math.max(...timestamps);
-  const timeSpan = maxTime - minTime || 1; // 防止单条零除
+  // 4. 计算当前所有记录的时间映射并按时间戳升序排序
+  const sortedRecords = [...records].sort((a, b) => a.timestamp - b.timestamp);
+  const minTime = sortedRecords[0].timestamp;
+  const maxTime = sortedRecords[sortedRecords.length - 1].timestamp;
+  const timeSpan = maxTime - minTime || 1; // 防止单条平分分母
 
-  // 绘制时间轴刻度 label
+  // 绘制横轴时间两端端标
   tCtx.fillStyle = "#94a3b8";
   tCtx.font = "10px sans-serif";
-  
-  const startTimeStr = new Date(minTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const endTimeStr = new Date(maxTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const startTimeStr = new Date(minTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const endTimeStr = new Date(maxTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   tCtx.fillText(startTimeStr, startX, chartHeight + 15);
-  
   tCtx.textAlign = "right";
   tCtx.fillText(endTimeStr, startX + chartWidth, chartHeight + 15);
   tCtx.textAlign = "start";
 
-  // 渲染趋势鼾声爆发点柱
-  records.forEach(record => {
-    // 映射 X 轴 (时间相对值)
+  // 映射生成在 Canvas 内的所有折线点坐标，存入缓存供点击和悬浮高亮使用
+  chartPoints = sortedRecords.map(record => {
     const relativeTime = record.timestamp - minTime;
     const posX = startX + (relativeTime / timeSpan) * chartWidth;
-    
-    // 映射 Y 轴 (音量强度相对高度)
-    // 强度区间常态为 [20, 85]，映射到 chartHeight 高度内
-    const maxBarHeight = chartHeight - 30;
     const barH = ((record.volume - 15) / 70) * maxBarHeight;
     const posY = chartHeight - Math.max(10, Math.min(maxBarHeight, barH));
+    return {
+      x: posX,
+      y: posY,
+      id: record.id,
+      volume: record.volume,
+      timeText: record.timeText,
+      timestamp: record.timestamp
+    };
+  });
 
-    // 采用靓丽的脉冲橙色渐变绘制柱子
-    const grad = tCtx.createLinearGradient(posX, chartHeight, posX, posY);
-    grad.addColorStop(0, "rgba(99, 102, 241, 0.2)");
-    grad.addColorStop(1, "rgba(245, 158, 11, 0.95)");
+  // 5. 绘制填充背景渐变 (曲线与时间轴闭合区域)
+  tCtx.beginPath();
+  tCtx.moveTo(chartPoints[0].x, chartHeight);
+  chartPoints.forEach(pt => {
+    tCtx.lineTo(pt.x, pt.y);
+  });
+  tCtx.lineTo(chartPoints[chartPoints.length - 1].x, chartHeight);
+  tCtx.closePath();
 
-    tCtx.fillStyle = grad;
-    tCtx.fillRect(posX - 4, posY, 8, chartHeight - posY);
+  const areaGrad = tCtx.createLinearGradient(0, 15, 0, chartHeight);
+  areaGrad.addColorStop(0, "rgba(99, 102, 241, 0.25)");
+  areaGrad.addColorStop(1, "rgba(99, 102, 241, 0.0)");
+  tCtx.fillStyle = areaGrad;
+  tCtx.fill();
 
-    // 顶部发光顶点圆圈
+  // 6. 绘制渐变曲线本体
+  tCtx.beginPath();
+  tCtx.moveTo(chartPoints[0].x, chartPoints[0].y);
+  for (let i = 1; i < chartPoints.length; i++) {
+    tCtx.lineTo(chartPoints[i].x, chartPoints[i].y);
+  }
+  tCtx.strokeStyle = "linear-gradient(to right, #818cf8, #06b6d4)"; // JS 对应写法：
+  const strokeGrad = tCtx.createLinearGradient(startX, 0, startX + chartWidth, 0);
+  strokeGrad.addColorStop(0, "#818cf8");
+  strokeGrad.addColorStop(0.5, "#4f46e5");
+  strokeGrad.addColorStop(1, "#06b6d4");
+  
+  tCtx.strokeStyle = strokeGrad;
+  tCtx.lineWidth = 3;
+  tCtx.stroke();
+
+  // 7. 绘制数据点及特效（普通点 / 激活播放脉冲点）
+  chartPoints.forEach(pt => {
+    const isPlaying = (pt.id === activePlayingId);
+    
+    // 如果是正在播放的节点，绘制炫丽扩散的橙色水波纹动画
+    if (isPlaying) {
+      tCtx.beginPath();
+      tCtx.arc(pt.x, pt.y, rippleRadius, 0, 2 * Math.PI);
+      tCtx.strokeStyle = `rgba(245, 158, 11, ${1 - (rippleRadius / 20)})`;
+      tCtx.lineWidth = 2;
+      tCtx.stroke();
+      
+      // 内部发光环
+      tCtx.beginPath();
+      tCtx.arc(pt.x, pt.y, 8, 0, 2 * Math.PI);
+      tCtx.fillStyle = "rgba(245, 158, 11, 0.3)";
+      tCtx.fill();
+    }
+
+    // 绘制内点核心
     tCtx.beginPath();
-    tCtx.arc(posX, posY, 4, 0, 2 * Math.PI);
-    tCtx.fillStyle = "#f59e0b";
+    tCtx.arc(pt.x, pt.y, isPlaying ? 5.5 : 4, 0, 2 * Math.PI);
+    tCtx.fillStyle = isPlaying ? "#f59e0b" : "#06b6d4";
+    tCtx.strokeStyle = "#0b0f19";
+    tCtx.lineWidth = 1.5;
     tCtx.fill();
+    tCtx.stroke();
+
+    // 绘制发光阴影
+    tCtx.beginPath();
+    tCtx.arc(pt.x, pt.y, isPlaying ? 9 : 7, 0, 2 * Math.PI);
+    tCtx.fillStyle = isPlaying ? "rgba(245, 158, 11, 0.15)" : "rgba(6, 182, 212, 0.15)";
+    tCtx.fill();
+  });
+
+  // 8. 绘制悬浮 Tooltip 气泡提示
+  if (hoveredPoint) {
+    drawTooltip(hoveredPoint);
+  }
+}
+
+// 绘制数据悬停提示框
+function drawTooltip(pt) {
+  const isPlaying = (pt.id === activePlayingId);
+  const text = `${pt.timeText} | 声强: ${pt.volume} dB`;
+  tCtx.font = "bold 10px sans-serif";
+  const textWidth = tCtx.measureText(text).width;
+  
+  const boxWidth = textWidth + 16;
+  const boxHeight = 22;
+  const boxX = Math.max(10, Math.min(timelineCanvas.width - boxWidth - 10, pt.x - boxWidth / 2));
+  const boxY = pt.y - 32;
+
+  // 绘制微调圆角气泡底板
+  tCtx.fillStyle = isPlaying ? "rgba(245, 158, 11, 0.95)" : "rgba(15, 23, 42, 0.95)";
+  tCtx.strokeStyle = isPlaying ? "#ffffff" : "var(--accent)";
+  tCtx.lineWidth = 1;
+  
+  // 简单绘制一个圆角气泡盒
+  tCtx.beginPath();
+  tCtx.roundRect(boxX, boxY, boxWidth, boxHeight, 6);
+  tCtx.fill();
+  tCtx.stroke();
+
+  // 绘制指向圆点的三角形小标
+  tCtx.beginPath();
+  tCtx.moveTo(pt.x - 4, boxY + boxHeight);
+  tCtx.lineTo(pt.x + 4, boxY + boxHeight);
+  tCtx.lineTo(pt.x, boxY + boxHeight + 4);
+  tCtx.closePath();
+  tCtx.fillStyle = isPlaying ? "rgba(245, 158, 11, 0.95)" : "rgba(15, 23, 42, 0.95)";
+  tCtx.fill();
+
+  // 绘制提示框文本
+  tCtx.fillStyle = "#ffffff";
+  tCtx.textAlign = "center";
+  tCtx.fillText(text, boxX + boxWidth / 2, boxY + 14);
+  tCtx.textAlign = "start"; // 恢复
+}
+
+// 曲线图动画渲染循环，专责渲染播放时的涟漪水波纹动画
+function runChartAnimation() {
+  if (activePlayingId === null) {
+    if (chartAnimationId) {
+      cancelAnimationFrame(chartAnimationId);
+      chartAnimationId = null;
+    }
+    drawTimelineChart(loadedRecordsCache);
+    return;
+  }
+
+  // 涟漪水波纹扩散增量
+  rippleRadius += 0.4;
+  if (rippleRadius > 20) {
+    rippleRadius = 4;
+  }
+
+  drawTimelineChart(loadedRecordsCache);
+  chartAnimationId = requestAnimationFrame(runChartAnimation);
+}
+
+// 开启图表波纹动画
+function startChartAnimation(recordId) {
+  activePlayingId = recordId;
+  rippleRadius = 4;
+  if (!chartAnimationId) {
+    runChartAnimation();
+  }
+}
+
+// 停止图表音频和动画状态
+function stopChartAudio() {
+  chartAudioPlayer.pause();
+  chartAudioPlayer.src = "";
+  activePlayingId = null;
+  drawTimelineChart(loadedRecordsCache);
+  
+  // 移除列表元素中的播放高亮样式
+  document.querySelectorAll(".recording-item").forEach(item => {
+    item.classList.remove("playing-active");
   });
 }
 
+// --- 处理趋势图的交互手势（点击播放、移动高亮提示） ---
+function handleChartInteraction(e, isClick) {
+  const rect = timelineCanvas.getBoundingClientRect();
+  const mouseX = e.clientX - rect.left;
+  const mouseY = e.clientY - rect.top;
+
+  // 将相对 CSS 坐标映射到 Canvas 自身真实的象限分辨率下
+  const canvasX = (mouseX / rect.width) * timelineCanvas.width;
+  const canvasY = (mouseY / rect.height) * timelineCanvas.height;
+
+  // 扫描判定是否触碰或接近历史节点 (触控检测半径：16像素)
+  let foundPoint = null;
+  const triggerRadius = 16;
+
+  for (const pt of chartPoints) {
+    const dist = Math.sqrt((pt.x - canvasX) ** 2 + (pt.y - canvasY) ** 2);
+    if (dist < triggerRadius) {
+      foundPoint = pt;
+      break;
+    }
+  }
+
+  if (isClick) {
+    // 1. 如果点击了某一个鼾声节点，立即执行音频播放
+    if (foundPoint) {
+      playRecordFromChart(foundPoint.id);
+    }
+  } else {
+    // 2. 如果是鼠标滑动，触发悬浮高亮或手势变化
+    const prevHovered = hoveredPoint;
+    if (foundPoint) {
+      hoveredPoint = foundPoint;
+      timelineCanvas.style.cursor = "pointer";
+    } else {
+      hoveredPoint = null;
+      timelineCanvas.style.cursor = "default";
+    }
+
+    // 只有当高亮状态改变、且当前无播放（无动画更新）时，才重画静态图防止高频阻塞
+    if (prevHovered !== hoveredPoint && activePlayingId === null) {
+      drawTimelineChart(loadedRecordsCache);
+    }
+  }
+}
+
+// 绑定 Canvas 事件监听
+timelineCanvas.onmousemove = function(e) {
+  handleChartInteraction(e, false);
+};
+
+timelineCanvas.onmouseleave = function() {
+  if (hoveredPoint !== null) {
+    hoveredPoint = null;
+    timelineCanvas.style.cursor = "default";
+    if (activePlayingId === null) {
+      drawTimelineChart(loadedRecordsCache);
+    }
+  }
+};
+
+timelineCanvas.onclick = function(e) {
+  handleChartInteraction(e, true);
+};
+
+// 核心：点击图表节点播放音频，并实现列表平滑高亮定位滚动
+function playRecordFromChart(id) {
+  // 查找对应本地缓存的记录
+  const record = loadedRecordsCache.find(r => r.id === id);
+  if (!record) return;
+
+  // 如果当前正播放同一段，则执行暂停，起到 Toggle 效果
+  if (activePlayingId === id) {
+    stopChartAudio();
+    showToast("播放已暂停");
+    return;
+  }
+
+  // 清除之前可能正在播放的各种音轨
+  stopChartAudio();
+  
+  try {
+    const url = URL.createObjectURL(record.blob);
+    chartAudioPlayer.src = url;
+    
+    // 绑定播放事件
+    chartAudioPlayer.onplay = function() {
+      startChartAnimation(id);
+      showToast(`正在播放 ［${record.timeText}］ 鼾声记录`);
+      
+      // 联动：高亮下方列表中对应的元素卡片，并平滑滚动到视口中央
+      highlightAndScrollToItem(id);
+    };
+
+    chartAudioPlayer.onended = function() {
+      stopChartAudio();
+    };
+
+    chartAudioPlayer.onerror = function() {
+      showToast("音频文件载入失败，文件可能已被损坏。");
+      stopChartAudio();
+    };
+
+    chartAudioPlayer.play();
+
+  } catch(e) {
+    console.error("图表触发播放失败：", e);
+    showToast("播放失败：" + e.message);
+  }
+}
+
+// 高亮并平滑定位滚动列表项
+function highlightAndScrollToItem(id) {
+  // 移除所有卡片的播放高亮状态
+  document.querySelectorAll(".recording-item").forEach(item => {
+    item.classList.remove("playing-active");
+  });
+
+  const targetItem = document.getElementById(`record-item-${id}`);
+  if (targetItem) {
+    targetItem.classList.add("playing-active");
+    targetItem.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+
+// 全局播放事件捕获：当用户直接通过下方自带 audio 播放器播放时，也触发趋势图对应联动
+function handleNativePlayEvent(id) {
+  if (activePlayingId === id) return;
+  
+  // 暂停图表全局播放器，防止声音打架
+  chartAudioPlayer.pause();
+  
+  // 启动图表对应节点定位扩散涟漪
+  startChartAnimation(id);
+  
+  // 移除所有的高亮，精准赋予当前
+  document.querySelectorAll(".recording-item").forEach(item => {
+    item.classList.remove("playing-active");
+  });
+  const targetItem = document.getElementById(`record-item-${id}`);
+  if (targetItem) {
+    targetItem.classList.add("playing-active");
+  }
+}
+
+function handleNativePauseOrEndEvent(id) {
+  if (activePlayingId === id) {
+    activePlayingId = null;
+    drawTimelineChart(loadedRecordsCache);
+  }
+}
+
+
+// --- 渲染历史列表 ---
 function renderHistoryList(records) {
   events.innerHTML = "";
   
@@ -1244,6 +1593,12 @@ function renderHistoryList(records) {
   records.forEach(function(item) {
     const li = document.createElement("li");
     li.className = "recording-item";
+    li.id = `record-item-${item.id}`;
+
+    // 如果该项目当前正在播放，添加高亮类名
+    if (item.id === activePlayingId) {
+      li.classList.add("playing-active");
+    }
 
     const url = URL.createObjectURL(item.blob);
     const timestamp = new Date(item.timestamp);
@@ -1252,10 +1607,10 @@ function renderHistoryList(records) {
     li.innerHTML = `
       <div class="item-meta">
         <span class="item-time">${item.timeText}</span>
-        <span class="item-volume">峰值低频强度: ${item.volume}</span>
+        <span class="item-volume">峰值低频强度: ${item.volume} dB</span>
       </div>
       <div class="audio-wrapper">
-        <audio src="${url}" controls preload="none"></audio>
+        <audio id="audio-player-${item.id}" src="${url}" controls preload="none"></audio>
       </div>
       <div class="action-row">
         <a class="btn-action" href="${url}" download="${fileName}">
@@ -1269,6 +1624,20 @@ function renderHistoryList(records) {
       </div>
     `;
     events.appendChild(li);
+
+    // 绑定下属音频原生控制播放事件，从而反向通知图表产生波纹扩散
+    const nativeAudio = document.getElementById(`audio-player-${item.id}`);
+    if (nativeAudio) {
+      nativeAudio.onplay = function() {
+        handleNativePlayEvent(item.id);
+      };
+      nativeAudio.onpause = function() {
+        handleNativePauseOrEndEvent(item.id);
+      };
+      nativeAudio.onended = function() {
+        handleNativePauseOrEndEvent(item.id);
+      };
+    }
   });
 }
 
@@ -1281,12 +1650,12 @@ window.deleteItem = function(id) {
 
 // 一键清空全记录绑定
 clearAllBtn.onclick = function() {
-  showModal("危险警告", "您即将清空该浏览器中保存的所有鼾声记录！是否确认？", function() {
+  showModal("危险警告", "您即将清空该浏览器中保存的所有历史记录，一经清除不可找回！是否确认？", function() {
     clearAllRecordings();
   }, true);
 };
 
-// 一键打包 ZIP 下载全部录音 (超级利好体验)
+// 一键打包 ZIP 下载全部录音 (体验大幅领先传统方案)
 zipAllBtn.onclick = async function() {
   if (loadedRecordsCache.length === 0) return;
   
